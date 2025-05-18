@@ -1,0 +1,8 @@
+name: wikimedia-project
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12.2
+  - pyspark
+  - openjdk=11
+  - requests
