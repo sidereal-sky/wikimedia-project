@@ -15,3 +15,8 @@ conda activate wikimedia-project
 ```bash
 python3 main.py
 ```
+
+### Structure
+- `main.py`: Main script to parse the wiki dumps and run the analysis
+- `insights.py`: Contains the analysis functions using wikimedia API
+- `cluster_titles.py`: Zero-shot classification of article titles

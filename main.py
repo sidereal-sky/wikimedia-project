@@ -56,10 +56,16 @@ def main():
 
     pages.show(10)
 
-    titles_rdd = pages.select("title").rdd.flatMap(lambda row: [row.title])
-
+    # titles_rdd = pages.select("title").rdd.flatMap(lambda row: [row.title])
+    #
     # # Save the titles RDD to a text file, one title per line
     # titles_rdd.saveAsTextFile("titles.txt")
+
+    titles = pages.select("title").rdd.flatMap(lambda row: [row.title]).collect()
+
+    with open("titles.txt", "w") as f:
+        for title in titles:
+            f.write(title + "\n")
 
     # Uncomment to view pageviews per article
     # print("Fetching pageviews...")

@@ -1,6 +1,7 @@
 dumps/*
 chunks/*
 .DS_Store
+titles.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

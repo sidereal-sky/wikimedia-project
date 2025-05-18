@@ -6,3 +6,5 @@ dependencies:
   - pyspark
   - openjdk=11
   - requests
+  - transformers
+  - pytorch
