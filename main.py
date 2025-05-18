@@ -1,7 +1,9 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, LongType, StringType
 import os
 import sys
+
+from pyspark.sql import SparkSession
+
+from insights import *
 
 DUMPS_BASE_DIR = "./chunks"
 DUMPS_FILES = "./chunks/*.xml.bz2"
@@ -58,6 +60,22 @@ def main():
 
     # # Save the titles RDD to a text file, one title per line
     # titles_rdd.saveAsTextFile("titles.txt")
+
+    # Uncomment to view pageviews per article
+    # print("Fetching pageviews...")
+    # load_pageviews(spark, titles_rdd)
+
+    # Uncomment to view categories per article
+    # print("Fetching categories...")
+    # load_categories(spark, titles_rdd)
+
+    # Uncomment to view edits per article - might take a bit longer
+    # print("Fetching edits...")
+    # load_edits(spark, titles_rdd)
+
+    # Uncomment to view global trends
+    # print("Fetching global trends...")
+    # load_global_trends(spark, titles_rdd)
 
     spark.stop()
 
