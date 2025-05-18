@@ -1,7 +1,9 @@
 import os
 import sys
+import glob
 
 from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType, StructField, LongType, StringType
 
 from insights import *
 
@@ -19,6 +21,11 @@ def main():
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
         .config("spark.hadoop.security.authorization", "false") \
         .config("spark.hadoop.security.authentication", "simple") \
+        .config("spark.driver.host", "localhost") \
+        .config("spark.driver.bindAddress", "127.0.0.1") \
+        .config("spark.executor.memory", "2g") \
+        .config("spark.driver.memory", "4g") \
+        .config("spark.local.dir", "./spark-temp") \
         .getOrCreate()
 
     page_schema = StructType([
@@ -40,48 +47,78 @@ def main():
         ]), True),
     ])
 
-    pages_df = spark.read \
-        .format("xml") \
-        .option("rootTag", "pages") \
-        .option("rowTag", "page") \
-        .load(DUMPS_FILES, schema=page_schema)
+    # Create Spark temp directory if it doesn't exist
+    os.makedirs("./spark-temp", exist_ok=True)
+    
+    titles = []
+    titles_df = None
 
-    pages_df.printSchema()
+    try:
+        # Check if there are any XML files in the chunks directory
+        xml_files = glob.glob(DUMPS_FILES)
+        
+        if xml_files:
+            print(f"Found {len(xml_files)} XML dump files.")
+            pages_df = spark.read \
+                .format("xml") \
+                .option("rootTag", "pages") \
+                .option("rowTag", "page") \
+                .load(DUMPS_FILES, schema=page_schema)
 
-    pages = pages_df.select(
-        pages_df.id.cast("long").alias("id"),
-        pages_df.title.alias("title"),
-        pages_df.revision.timestamp.alias("timestamp"),
-    )
+            pages_df.printSchema()
 
-    pages.show(10)
+            pages = pages_df.select(
+                pages_df.id.cast("long").alias("id"),
+                pages_df.title.alias("title"),
+                pages_df.revision.timestamp.alias("timestamp"),
+            )
 
-    # titles_rdd = pages.select("title").rdd.flatMap(lambda row: [row.title])
-    #
-    # # Save the titles RDD to a text file, one title per line
-    # titles_rdd.saveAsTextFile("titles.txt")
+            pages.show(10)
 
-    titles = pages.select("title").rdd.flatMap(lambda row: [row.title]).collect()
+            titles = pages.select("title").rdd.flatMap(lambda row: [row.title]).collect()
+            
+            # Save titles to file
+            with open("titles.txt", "w") as f:
+                for title in titles:
+                    f.write(title + "\n")
+        else:
+            print("Warning: No XML files found in the chunks directory.")
+            if os.path.exists("titles.txt"):
+                with open("titles.txt", "r") as f:
+                    titles = [line.strip() for line in f.readlines()]
+                print(f"Loaded {len(titles)} titles from titles.txt")
+            else:
+                print("Error: No titles.txt file found either. Please add XML files or create a titles.txt file.")
+            
+    except Exception as e:
+        print(f"Error processing XML files: {e}")
+        print("Continuing with existing titles.txt if available...")
+        if os.path.exists("titles.txt"):
+            with open("titles.txt", "r") as f:
+                titles = [line.strip() for line in f.readlines()]
+            print(f"Loaded {len(titles)} titles from titles.txt")
 
-    with open("titles.txt", "w") as f:
-        for title in titles:
-            f.write(title + "\n")
+    # Create a DataFrame and RDD from titles for analytics functions
+    if titles and len(titles) > 0:
+        # Create DataFrame and RDD from the titles list for analytics
+        titles_df = spark.createDataFrame([(title,) for title in titles], ["title"])
+        titles_rdd = titles_df.select("title").rdd.flatMap(lambda row: [row.title])
+        
+        # Uncomment to view pageviews per article
+        print("Fetching pageviews...")
+        load_pageviews(spark, titles_rdd)
 
-    # Uncomment to view pageviews per article
-    # print("Fetching pageviews...")
-    # load_pageviews(spark, titles_rdd)
+        # Uncomment to view categories per article
+        print("Fetching categories...")
+        load_categories(spark, titles_rdd)
 
-    # Uncomment to view categories per article
-    # print("Fetching categories...")
-    # load_categories(spark, titles_rdd)
+        # Uncomment to view edits per article - might take a bit longer
+        print("Fetching edits...")
+        load_edits(spark, titles_rdd)
 
-    # Uncomment to view edits per article - might take a bit longer
-    # print("Fetching edits...")
-    # load_edits(spark, titles_rdd)
-
-    # Uncomment to view global trends
-    # print("Fetching global trends...")
-    # load_global_trends(spark, titles_rdd)
+        # Uncomment to view global trends
+        print("Fetching global trends...")
+        load_global_trends(spark, titles_rdd)
 
     spark.stop()
 

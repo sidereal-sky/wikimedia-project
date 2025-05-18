@@ -1,10 +1,19 @@
 name: wikimedia-project
 channels:
   - conda-forge
+  - defaults
 dependencies:
   - python=3.12.2
-  - pyspark
+  - pyspark=3.5.1
   - openjdk=11
-  - requests
-  - transformers
-  - pytorch
+  - requests=2.31.0
+  - transformers=4.38.2
+  - pytorch=2.2.0
+  - pandas=2.2.0
+  - plotly=5.18.0
+  - dash=2.15.0
+  - folium=0.14.0
+  - numpy=1.26.3
+  - pip=24.0
+  - pip:
+    - dash-bootstrap-components==1.5.0
